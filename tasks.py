@@ -3,8 +3,6 @@ from robocorp import browser
 
 from RPA.Tables import Tables
 from RPA.HTTP import HTTP
-from RPA.Excel.Files import Files
-from RPA.Browser.Selenium import Selenium
 from RPA.PDF import PDF
 from RPA.Archive import Archive
 
@@ -15,9 +13,9 @@ from RPA.Archive import Archive
 @task
 def send_orders():
     """Get orders from website, execute them and make PDFs which will be made into zip archive"""
+    browser.configure()
     open_robot_order_website()
     download_csv_file()
-    browser.configure()
     get_orders()
     fill_forms(orders=get_orders())
     archive_receipts()
@@ -56,6 +54,7 @@ def select_robot_parts(row):
     page.select_option("#head", row["Head"])
     body_id = row["Body"]
     body_id = f"id-body-{body_id}"
+    page.click("#{body_id}")
     page.get_by_placeholder('Enter the part number for the legs').fill(row["Legs"])
     page.fill("#address", str(row["Address"]))
     page.click("text=Preview")
