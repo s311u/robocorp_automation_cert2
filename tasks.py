@@ -1,32 +1,26 @@
 from robocorp.tasks import task
 from robocorp import browser
+import time
+from robot.libraries.String import String
+# from RPA.Browser import Browser
+
 
 from RPA.Tables import Tables
 from RPA.HTTP import HTTP
 from RPA.PDF import PDF
 from RPA.Archive import Archive
-
-
-
+pdf = PDF()
 
 
 @task
 def send_orders():
     """Get orders from website, execute them and make PDFs which will be made into zip archive"""
     browser.configure()
-    open_robot_order_website()
     download_csv_file()
     get_orders()
+    open_robot_order_website()
     fill_forms(orders=get_orders())
     archive_receipts()
-
-
-
-def open_robot_order_website():
-    """Navigates to the given URL"""
-    browser.goto("https://robotsparebinindustries.com/#/robot-order")
-    page = browser.page()
-    page.click("button:text('OK')")
 
 def download_csv_file():
     """Downloads csv file from the given URL"""
@@ -40,75 +34,88 @@ def get_orders():
     )
     return orders
 
+
+def open_robot_order_website():
+    """Navigates to the given URL"""
+    browser.goto("https://robotsparebinindustries.com/#/robot-order")
+    page = browser.page()
+    page.click("button:text('OK')")
+
 def fill_forms(orders):
     for row in orders:
         select_robot_parts(row)
-        order_new()
+        # order_new()
+        # try:
+        #     order_new()
+        # except:
+        #     pass
 
 def select_robot_parts(row):
-
-    browser.goto("https://robotsparebinindustries.com/#/robot-order")
     page = browser.page()
 
     order_id = row["Order number"]
     page.select_option("#head", row["Head"])
     body_id = row["Body"]
     body_id = f"id-body-{body_id}"
-    page.click("#{body_id}")
+    page.click(f"#{body_id}")
     page.get_by_placeholder('Enter the part number for the legs').fill(row["Legs"])
     page.fill("#address", str(row["Address"]))
-    page.click("text=Preview")
     robot_preview()
-    submit_order()
-    store_as_pdf(order_number=order_id)
-
+    submit_order(order_id)
 
 
 def robot_preview():
     """Take a screenshot of the page"""
     page = browser.page()
-    page.screenshot(path="output/element-screenshot-robot-preview-image.png")
+    page.click("text=Preview")
+    time.sleep(2)
+    locator = page.locator("#robot-preview-image")
+    page.screenshot(path="./output/element-screenshot-robot-preview-image.png", element = locator)
+    # page.screenshot(path="output/element-screenshot-robot-preview-image.png")
 
-def submit_order():
+def submit_order(order_id):
     page = browser.page()
-    page.click("text=Order")
-    check_exists()
+    time.sleep(2)
+    page.click("#order")
+    store_as_pdf(order_number=order_id)
+    check_exists(order_id)
 
-def check_exists():
+
+def order_new():
     page = browser.page()
-    if page.get_by_label("order-completion"):
-        return True
+    time.sleep(2)
+    page.click("#order-another")
+    page.click("button:text('OK')")
+    
+def check_exists(order_id):
+    page = browser.page()
+    if "error" in page.content().lower():
+        time.sleep(2)
+        page.click("#order")
+        check_exists(order_id)
     else:
-        submit_order()
-        check_exists()
+        store_as_pdf(order_number = order_id)
+        # ss_to_pdf(ss = "output/element-screenshot-robot-preview-image.png", pdf = pdf)
+        order_new()
+        # Log the innerHTML
+    # except:
+    #     store_as_pdf(order_number=order_id)
+    #     order_new()
 
 def store_as_pdf(order_number):
     """Export the data to a pdf file"""
     page = browser.page()
-    receipt_html = page.locator("#reciept").inner_html()
-
+    page.wait_for_selector("#receipt").get_attribute("role")
+    receipt_html = page.locator("#receipt").inner_html()
     pdf = PDF()
-    pdf.html_to_pdf(receipt_html, f"output/order-receipt-{order_number}.pdf")
-    
-    ss_to_pdf(ss = "output/element-screenshot-robot-preview-image.png", pdf = pdf)
+    targ = f"./output/order-receipt-{order_number}.pdf"
+    pdf.html_to_pdf(receipt_html, targ)
+    ss_to_pdf(ss=["./output/element-screenshot-robot-preview-image.png"], target_document = targ)
 
 
-def log_out():
-    """Presses the 'Log out' button"""
-    page = browser.page()
-    page.click("text=Log out")
-
-
-def ss_to_pdf(ss, pdf):
+def ss_to_pdf(ss, target_document):
     pdf = PDF()
-    pdf.add_files_to_pdf(
-        files = ss,
-        pdf = pdf
-    )
-
-def order_new():
-    page = browser.page()
-    page.click("text=Order another robot")
+    pdf.add_files_to_pdf(ss, target_document, True)
 
 def archive_receipts():
     lib = Archive()
