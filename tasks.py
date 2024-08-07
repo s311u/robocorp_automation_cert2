@@ -2,6 +2,7 @@ from robocorp.tasks import task
 from robocorp import browser
 import time
 from robot.libraries.String import String
+import os
 # from RPA.Browser import Browser
 
 
@@ -68,16 +69,18 @@ def robot_preview():
     """Take a screenshot of the page"""
     page = browser.page()
     page.click("text=Preview")
-    time.sleep(2)
+    time.sleep(1)
     locator = page.locator("#robot-preview-image")
-    page.screenshot(path="./output/element-screenshot-robot-preview-image.png", element = locator)
-    # page.screenshot(path="output/element-screenshot-robot-preview-image.png")
+    img = browser.screenshot(element = locator)
+    os.listdir()
+    file_path = "./output/element-screenshot-robot-preview-image.png"
+    with open(file_path, "wb") as file:
+        file.write(img)
 
 def submit_order(order_id):
     page = browser.page()
-    time.sleep(2)
+    time.sleep(1)
     page.click("#order")
-    store_as_pdf(order_number=order_id)
     check_exists(order_id)
 
 
@@ -89,18 +92,23 @@ def order_new():
     
 def check_exists(order_id):
     page = browser.page()
-    if "error" in page.content().lower():
-        time.sleep(2)
+    time.sleep(1)
+    alert = page.locator(".alert").first.inner_html().lower()
+    if "receipt" in alert:
+        store_as_pdf(order_number = order_id)
+        order_new()
+    else:
+        time.sleep(1)
+        page.click("#order")
+        check_exists(order_id)
+
+"""     if ("error" or "off again") in page.content().lower():
+        time.sleep(1)
         page.click("#order")
         check_exists(order_id)
     else:
         store_as_pdf(order_number = order_id)
-        # ss_to_pdf(ss = "output/element-screenshot-robot-preview-image.png", pdf = pdf)
-        order_new()
-        # Log the innerHTML
-    # except:
-    #     store_as_pdf(order_number=order_id)
-    #     order_new()
+        order_new() """
 
 def store_as_pdf(order_number):
     """Export the data to a pdf file"""
